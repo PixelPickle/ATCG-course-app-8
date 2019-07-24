@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs/operators';
+import {Post} from './post.model';
+import {PostsService} from './posts.service';
+import {post} from 'selenium-webdriver/http';
 
 @Component({
   selector: 'app-root',
@@ -9,54 +12,38 @@ import { map } from 'rxjs/operators';
 })
 export class AppComponent implements OnInit {
   loadedPosts = [];
+  isFetching = false;
+  error = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private postsService: PostsService) {}
 
   ngOnInit() {
-    this.fetchPosts();
+    this.onFetchPosts();
   }
 
-  onCreatePost(postData: { title: string; content: string }) {
+  onCreatePost(postData: Post) {
     console.log(postData);
 
-    // Send Http request
-    this.http
-      .post(
-        'https://atcg-course-app-8.firebaseio.com/posts.json',
-        postData
-      )
-      .subscribe((responseData) => {
-        console.log(responseData);
-      });
+    this.postsService.createAndStorePost( postData.title, postData.content );
   }
 
   onFetchPosts() {
+    this.isFetching = true;
     // Send Http request
-    this.fetchPosts();
+    this.postsService.fetchPosts().subscribe( (posts) => {
+      this.isFetching = false;
+      this.loadedPosts = posts;
+    }, (error) => {
+      this.isFetching = false;
+      this.error = error.message;
+    } );
   }
 
   onClearPosts() {
     // Send Http request
-  }
-
-  private fetchPosts() {
-    this.http
-      .get('https://atcg-course-app-8.firebaseio.com/posts.json')
-      .pipe(map( (responseData) => {
-        const postsArray = [];
-        for ( const key in responseData ) {
-          if (responseData.hasOwnProperty(key)) {
-            postsArray.push({
-              ...responseData[key],
-              id: key
-            });
-          }
-        }
-        return postsArray;
-      } ))
-      .subscribe( (posts) => {
-      console.log(posts);
-    });
+    this.postsService.deletePosts().subscribe( () => {
+      this.loadedPosts = [];
+    } );
   }
 
 }
